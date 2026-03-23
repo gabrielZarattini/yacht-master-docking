@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yacht Master: Docking Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1929 0%, #1a237e 100%);
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* UI Overlay */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #b0bec5;
+            letter-spacing: 1px;
+        }
+
+        .hud-panel {
+            position: absolute;
+            background: rgba(10, 25, 41, 0.85);
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 12px;
+            color: #00ff00;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+
+        .hud-left {
+            top: 100px;
+            left: 20px;
+            width: 220px;
+        }
+
+        .hud-right {
+            top: 100px;
+            right: 20px;
+            width: 220px;
+        }
+
+        .hud-bottom {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            text-align: center;
+        }
+
+        .hud-label {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .hud-value {
+            color: #00ff00;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 1px solid #00ff00;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffd700);
+            width: 0%;
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .docking-assist {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 100px;
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            background: rgba(10, 25, 41, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #00ff00;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+
+        .docking-assist.active {
+            opacity: 1;
+        }
+
+        .docking-assist.success {
+            border-color: #00ff00;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+        }
+
+        .docking-assist.warning {
+            border-color: #ff6600;
+            box-shadow: 0 0 30px rgba(255, 102, 0, 0.8);
+        }
+
+        .docking-assist.danger {
+            border-color: #ff0000;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+        }
+
+        .healing-effect {
+            position: absolute;
+            font-size: 20px;
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+            animation: healingPulse 0.6s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes healingPulse {
+            0% {
+                opacity: 1;
+                transform: scale(0.5);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(2);
+            }
+        }
+
+        .qr-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .qr-modal.active {
+            display: flex;
+        }
+
+        .qr-content {
+            background: linear-gradient(135deg, #0a1929 0%, #1a237e 100%);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+        }
+
+        .qr-title {
+            font-size: 32px;
+            color: #ffd700;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            letter-spacing: 2px;
+        }
+
+        #qrCode {
+            margin: 20px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .qr-description {
+            color: #00ff00;
+            font-size: 14px;
+            margin-top: 20px;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+        }
+
+        .close-qr {
+            margin-top: 20px;
+            padding: 10px 30px;
+            background: #ffd700;
+            color: #0a1929;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .close-qr:hover {
+            background: #ffed4e;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .leaderboard {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 25, 41, 0.85);
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            padding: 15px;
+            width: 200px;
+            max-height: 200px;
+            overflow-y: auto;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        .leaderboard-title {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .leaderboard-entry {
+            color: #00ff00;
+            font-size: 11px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .leaderboard-entry.top {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(10, 25, 41, 0.85);
+            border: 2px solid #ffd700;
+            border-radius: 8px;
+            padding: 15px;
+            width: 200px;
+            pointer-events: auto;
+            font-size: 11px;
+            color: #00ff00;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls-title {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .control-item {
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .collision-warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ff0000;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+            animation: collisionFlash 0.5s;
+            pointer-events: none;
+            z-index: 500;
+        }
+
+        @keyframes collisionFlash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .success-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #00ff00;
+            text-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
+            animation: successPulse 1s;
+            pointer-events: none;
+            z-index: 500;
+        }
+
+        @keyframes successPulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="title">⚓ YACHT MASTER</div>
+            <div class="subtitle">DOCKING CHALLENGE - MONACO PORT HERCULE</div>
+        </div>
+
+        <!-- Left HUD Panel -->
+        <div class="hud-panel hud-left">
+            <div class="hud-label">NAVIGATION STATUS</div>
+            <div class="hud-value" id="speedDisplay">Speed: 0.0 kn</div>
+            <div class="hud-value" id="headingDisplay">Heading: 0°</div>
+            <div class="hud-value" id="depthDisplay">Depth: 8.5 m</div>
+            <div class="hud-value" id="windDisplay">Wind: 12 kn NW</div>
+        </div>
+
+        <!-- Right HUD Panel -->
+        <div class="hud-panel hud-right">
+            <div class="hud-label">DOCKING PRECISION</div>
+            <div class="hud-label" style="color: #00ff00; margin-top: 10px;">ACCURACY</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="accuracyBar"></div>
+            </div>
+            <div class="hud-value" id="accuracyDisplay">0%</div>
+            <div class="hud-label" style="color: #00ff00; margin-top: 10px;">DISTANCE</div>
+            <div class="hud-value" id="distanceDisplay">---</div>
+        </div>
+
+        <!-- Bottom HUD Panel -->
+        <div class="hud-panel hud-bottom">
+            <div class="hud-label">CAPTAIN'S COMMANDS</div>
+            <div class="hud-value" id="commandDisplay">Ready for docking maneuver...</div>
+        </div>
+
+        <!-- Docking Assist -->
+        <div class="docking-assist" id="dockingAssist">
+            <div id="dockingMessage">APPROACH DOCKING ZONE</div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="leaderboard">
+            <div class="leaderboard-title">🏆 LEADERBOARD</div>
+            <div id="leaderboardList"></div>
+        </div>
+
+        <!-- Controls Info -->
+        <div class="controls-info">
+            <div class="controls-title">CONTROLS</div>
+            <div class="control-item">↑ Forward</div>
+            <div class="control-item">↓ Reverse</div>
+            <div class="control-item">← Port (Left)</div>
+            <div class="control-item">→ Starboard (Right)</div>
+            <div class="control-item">SPACE: Reset</div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div class="qr-modal" id="qrModal">
+        <div class="qr-content">
+            <div class="qr-title">🎁 BRINDE DESBLOQUEADO!</div>
+            <div class="qr-description">Escaneie o código QR para receber seu prêmio</div>
+            <div id="qrCode"></div>
+            <div class="qr-description" id="prizeMessage"></div>
+            <button class="close-qr" onclick="closeQRModal()">FECHAR</button>
+        </div>
+    </div>
+
+    <!-- Three.js and dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+    <script>
+        // ============================================
+        // YACHT MASTER: DOCKING CHALLENGE
+        // Autonomic Computing Simulator
+        // ============================================
+
+        // Game State
+        const gameState = {
+            yachtPosition: { x: 0, y: 0, z: -30 },
+            yachtRotation: 0,
+            yachtVelocity: { x: 0, z: 0 },
+            yachtAngularVelocity: 0,
+            rudderAngle: 0,
+            throttle: 0,
+            windForce: { x: 0, z: 0 },
+            collisionDetected: false,
+            dockingAccuracy: 0,
+            score: 0,
+            attempts: 0,
+            healingInProgress: false,
+            autoSensitivity: 1.0, // Autonomic self-configuration
+            captainCommands: [
+                "Ready for docking maneuver...",
+                "Steady as she goes, sir",
+                "Watch the port side!",
+                "Reduce throttle",
+                "Hard to starboard!",
+                "Approach with caution",
+                "Excellent precision!",
+                "Collision imminent!"
+            ]
+        };
+
+        // Scene setup
+        let scene, camera, renderer;
+        let yachtMesh, dockMesh, waterMesh;
+        let world, yachtBody, dockBody;
+
+        // Input handling
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                resetYacht();
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // Initialize scene
+        function initScene() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 100, 200);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 25);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting - Golden Hour
+            const sunLight = new THREE.DirectionalLight(0xffa500, 1.2);
+            sunLight.position.set(50, 40, 30);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.far = 200;
+            sunLight.shadow.camera.left = -100;
+            sunLight.shadow.camera.right = 100;
+            sunLight.shadow.camera.top = 100;
+            sunLight.shadow.camera.bottom = -100;
+            scene.add(sunLight);
+
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0xffd700, 0.6);
+            scene.add(ambientLight);
+
+            // Sky gradient
+            const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff8c00,
+                side: THREE.BackSide
+            });
+            const skyMesh = new THREE.Mesh(skyGeometry, skyMaterial);
+            scene.add(skyMesh);
+
+            // Water
+            createWater();
+
+            // Dock
+            createDock();
+
+            // Yacht
+            createYacht();
+
+            // Physics
+            initPhysics();
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Start animation loop
+            animate();
+        }
+
+        // Create water plane
+        function createWater() {
+            const geometry = new THREE.PlaneGeometry(200, 200);
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            // Create water texture with wave pattern
+            ctx.fillStyle = '#1a5f7a';
+            ctx.fillRect(0, 0, 512, 512);
+            
+            for (let i = 0; i < 100; i++) {
+                ctx.strokeStyle = `rgba(100, 150, 200, ${Math.random() * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(Math.random() * 512, Math.random() * 512, Math.random() * 20, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(4, 4);
+
+            const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                metalness: 0.3,
+                roughness: 0.7
+            });
+
+            waterMesh = new THREE.Mesh(geometry, material);
+            waterMesh.rotation.x = -Math.PI / 2;
+            waterMesh.receiveShadow = true;
+            scene.add(waterMesh);
+        }
+
+        // Create dock structure
+        function createDock() {
+            const dockGroup = new THREE.Group();
+
+            // Main dock platform
+            const platformGeometry = new THREE.BoxGeometry(30, 1, 15);
+            const platformMaterial = new THREE.MeshStandardMaterial({
+                color: 0x8b7355,
+                metalness: 0.2,
+                roughness: 0.8
+            });
+            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+            platform.position.set(0, 0.5, 15);
+            platform.castShadow = true;
+            platform.receiveShadow = true;
+            dockGroup.add(platform);
+
+            // Dock pilings
+            for (let i = -12; i <= 12; i += 6) {
+                const pilingGeometry = new THREE.CylinderGeometry(0.3, 0.4, 8, 16);
+                const pilingMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x654321,
+                    metalness: 0.1,
+                    roughness: 0.9
+                });
+                const piling = new THREE.Mesh(pilingGeometry, pilingMaterial);
+                piling.position.set(i, -3, 15);
+                piling.castShadow = true;
+                piling.receiveShadow = true;
+                dockGroup.add(piling);
+            }
+
+            // Docking zone markers
+            const markerGeometry = new THREE.BoxGeometry(25, 0.1, 10);
+            const markerMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00ff00,
+                emissive: 0x00aa00,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+            marker.position.set(0, 1.1, 15);
+            dockGroup.add(marker);
+
+            scene.add(dockGroup);
+            dockMesh = dockGroup;
+        }
+
+        // Create yacht model
+        function createYacht() {
+            const yachtGroup = new THREE.Group();
+
+            // Hull
+            const hullGeometry = new THREE.BoxGeometry(4, 2, 12);
+            const hullMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                metalness: 0.3,
+                roughness: 0.6
+            });
+            const hull = new THREE.Mesh(hullGeometry, hullMaterial);
+            hull.position.y = 0;
+            hull.castShadow = true;
+            hull.receiveShadow = true;
+            yachtGroup.add(hull);
+
+            // Cabin
+            const cabinGeometry = new THREE.BoxGeometry(3, 2, 4);
+            const cabinMaterial = new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                metalness: 0.2,
+                roughness: 0.7
+            });
+            const cabin = new THREE.Mesh(cabinGeometry, cabinMaterial);
+            cabin.position.set(0, 1.5, 2);
+            cabin.castShadow = true;
+            cabin.receiveShadow = true;
+            yachtGroup.add(cabin);
+
+            // Mast
+            const mastGeometry = new THREE.CylinderGeometry(0.1, 0.15, 15, 8);
+            const mastMaterial = new THREE.MeshStandardMaterial({
+                color: 0xaaaaaa,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+            const mast = new THREE.Mesh(mastGeometry, mastMaterial);
+            mast.position.set(0, 8, 1);
+            mast.castShadow = true;
+            yachtGroup.add(mast);
+
+            // Rudder
+            const rudderGeometry = new THREE.BoxGeometry(0.2, 1.5, 1.5);
+            const rudderMaterial = new THREE.MeshStandardMaterial({
+                color: 0x444444,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            const rudder = new THREE.Mesh(rudderGeometry, rudderMaterial);
+            rudder.position.set(0, -0.5, -5);
+            rudder.castShadow = true;
+            yachtGroup.add(rudder);
+
+            yachtGroup.position.copy(gameState.yachtPosition);
+            scene.add(yachtGroup);
+            yachtMesh = yachtGroup;
+        }
+
+        // Physics initialization
+        function initPhysics() {
+            world = new CANNON.World();
+            world.gravity.set(0, 0, 0);
+            world.defaultContactMaterial.friction = 0.3;
+
+            // Yacht body
+            const yachtShape = new CANNON.Box(new CANNON.Vec3(2, 1, 6));
+            yachtBody = new CANNON.Body({ mass: 1000 });
+            yachtBody.addShape(yachtShape);
+            yachtBody.position.set(gameState.yachtPosition.x, gameState.yachtPosition.y, gameState.yachtPosition.z);
+            world.addBody(yachtBody);
+
+            // Dock collision body
+            const dockShape = new CANNON.Box(new CANNON.Vec3(15, 0.5, 7.5));
+            dockBody = new CANNON.Body({ mass: 0 });
+            dockBody.addShape(dockShape);
+            dockBody.position.set(0, 0.5, 15);
+            world.addBody(dockBody);
+
+            // Collision detection
+            world.addEventListener('collide', (event) => {
+                if ((event.body === yachtBody && event.target === dockBody) ||
+                    (event.body === dockBody && event.target === yachtBody)) {
+                    triggerCollision();
+                }
+            });
+        }
+
+        // Update physics and game state
+        function updatePhysics(deltaTime) {
+            // Input handling
+            const moveForce = 50;
+            const rotationForce = 0.1;
+
+            if (keys['arrowup'] || keys['w']) {
+                gameState.throttle = Math.min(gameState.throttle + 0.02, 1);
+            } else if (keys['arrowdown'] || keys['s']) {
+                gameState.throttle = Math.max(gameState.throttle - 0.02, -0.5);
+            } else {
+                gameState.throttle *= 0.95; // Friction
+            }
+
+            if (keys['arrowleft'] || keys['a']) {
+                gameState.rudderAngle = Math.min(gameState.rudderAngle + 0.05 * gameState.autoSensitivity, 1);
+            } else if (keys['arrowright'] || keys['d']) {
+                gameState.rudderAngle = Math.max(gameState.rudderAngle - 0.05 * gameState.autoSensitivity, -1);
+            } else {
+                gameState.rudderAngle *= 0.9; // Return to center
+            }
+
+            // Apply thrust
+            const thrustX = Math.sin(gameState.yachtRotation) * gameState.throttle * moveForce;
+            const thrustZ = Math.cos(gameState.yachtRotation) * gameState.throttle * moveForce;
+
+            yachtBody.velocity.x = thrustX + gameState.windForce.x;
+            yachtBody.velocity.z = thrustZ + gameState.windForce.z;
+
+            // Apply rudder rotation
+            gameState.yachtAngularVelocity = gameState.rudderAngle * rotationForce;
+            gameState.yachtRotation += gameState.yachtAngularVelocity;
+
+            // Update physics world
+            world.step(1 / 60);
+
+            // Update game state from physics
+            gameState.yachtPosition.x = yachtBody.position.x;
+            gameState.yachtPosition.y = yachtBody.position.y;
+            gameState.yachtPosition.z = yachtBody.position.z;
+
+            // Calculate speed
+            const speedKnots = Math.sqrt(yachtBody.velocity.x ** 2 + yachtBody.velocity.z ** 2) * 1.944;
+            gameState.speed = speedKnots;
+
+            // Calculate docking accuracy
+            calculateDockingAccuracy();
+
+            // Update wind (dynamic)
+            gameState.windForce.x = Math.sin(Date.now() * 0.001) * 5;
+            gameState.windForce.z = Math.cos(Date.now() * 0.001) * 5;
+
+            // Autonomic self-configuration: adjust sensitivity based on performance
+            if (gameState.dockingAccuracy > 80) {
+                gameState.autoSensitivity = Math.max(gameState.autoSensitivity - 0.01, 0.5);
+            } else if (gameState.dockingAccuracy < 30) {
+                gameState.autoSensitivity = Math.min(gameState.autoSensitivity + 0.01, 1.5);
+            }
+        }
+
+        // Calculate docking accuracy
+        function calculateDockingAccuracy() {
+            const dockCenter = { x: 0, z: 15 };
+            const distX = Math.abs(gameState.yachtPosition.x - dockCenter.x);
+            const distZ = Math.abs(gameState.yachtPosition.z - dockCenter.z);
+
+            const maxDist = 20;
+            gameState.dockingAccuracy = Math.max(0, 100 - (distX + distZ) * 2);
+
+            // Check if docked
+            if (distZ < 2 && distX < 3 && gameState.speed < 2) {
+                if (gameState.dockingAccuracy > 95) {
+                    triggerSuccess();
+                }
+            }
+        }
+
+        // Collision trigger
+        function triggerCollision() {
+            if (gameState.collisionDetected || gameState.healingInProgress) return;
+
+            gameState.collisionDetected = true;
+            gameState.attempts++;
+
+            // Visual feedback
+            showCollisionWarning();
+
+            // Trigger healing effect
+            triggerHealing();
+
+            setTimeout(() => {
+                gameState.collisionDetected = false;
+            }, 1000);
+        }
+
+        // Self-healing effect
+        function triggerHealing() {
+            gameState.healingInProgress = true;
+
+            // Visual healing particles
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'healing-effect';
+                    particle.textContent = '✦';
+                    particle.style.left = (Math.random() * 100) + '%';
+                    particle.style.top = (Math.random() * 100) + '%';
+                    document.body.appendChild(particle);
+                    setTimeout(() => particle.remove(), 600);
+                }, i * 50);
+            }
+
+            // Reset yacht position after healing
+            setTimeout(() => {
+                resetYacht();
+                gameState.healingInProgress = false;
+            }, 1000);
+        }
+
+        // Success trigger
+        function triggerSuccess() {
+            gameState.score = Math.round(gameState.dockingAccuracy * 10);
+            showSuccessMessage();
+            generateQRCode();
+            updateLeaderboard();
+            resetYacht();
+        }
+
+        // Reset yacht
+        function resetYacht() {
+            gameState.yachtPosition = { x: 0, y: 0, z: -30 };
+            gameState.yachtRotation = 0;
+            gameState.throttle = 0;
+            gameState.rudderAngle = 0;
+            yachtBody.position.set(0, 0, -30);
+            yachtBody.velocity.set(0, 0, 0);
+            yachtBody.angularVelocity.set(0, 0, 0);
+        }
+
+        // Show collision warning
+        function showCollisionWarning() {
+            const warning = document.createElement('div');
+            warning.className = 'collision-warning';
+            warning.textContent = '⚠️ COLLISION!';
+            document.body.appendChild(warning);
+            setTimeout(() => warning.remove(), 500);
+        }
+
+        // Show success message
+        function showSuccessMessage() {
+            const message = document.createElement('div');
+            message.className = 'success-message';
+            message.textContent = '✓ DOCKED!';
+            document.body.appendChild(message);
+            setTimeout(() => message.remove(), 1000);
+        }
+
+        // Generate QR Code
+        function generateQRCode() {
+            const qrData = `YACHT_MASTER_PRIZE_${gameState.score}_${Date.now()}`;
+            const qrElement = document.getElementById('qrCode');
+            qrElement.innerHTML = '';
+            
+            new QRCode(qrElement, {
+                text: qrData,
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('prizeMessage').textContent = `Pontuação: ${gameState.score} | Precisão: ${gameState.dockingAccuracy.toFixed(1)}%`;
+            document.getElementById('qrModal').classList.add('active');
+        }
+
+        // Close QR modal
+        function closeQRModal() {
+            document.getElementById('qrModal').classList.remove('active');
+        }
+
+        // Update leaderboard
+        function updateLeaderboard() {
+            let leaderboard = JSON.parse(localStorage.getItem('yachtLeaderboard') || '[]');
+            leaderboard.push({
+                score: gameState.score,
+                accuracy: gameState.dockingAccuracy,
+                timestamp: new Date().toLocaleTimeString()
+            });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 5);
+            localStorage.setItem('yachtLeaderboard', JSON.stringify(leaderboard));
+
+            displayLeaderboard();
+        }
+
+        // Display leaderboard
+        function displayLeaderboard() {
+            const leaderboard = JSON.parse(localStorage.getItem('yachtLeaderboard') || '[]');
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = '';
+
+            leaderboard.forEach((entry, index) => {
+                const div = document.createElement('div');
+                div.className = `leaderboard-entry ${index === 0 ? 'top' : ''}`;
+                div.textContent = `${index + 1}. ${entry.score} pts`;
+                list.appendChild(div);
+            });
+        }
+
+        // Update UI
+        function updateUI() {
+            document.getElementById('speedDisplay').textContent = `Speed: ${gameState.speed.toFixed(1)} kn`;
+            document.getElementById('headingDisplay').textContent = `Heading: ${(gameState.yachtRotation * 180 / Math.PI).toFixed(0)}°`;
+            document.getElementById('accuracyDisplay').textContent = `${gameState.dockingAccuracy.toFixed(1)}%`;
+            document.getElementById('accuracyBar').style.width = `${gameState.dockingAccuracy}%`;
+
+            const distZ = Math.abs(gameState.yachtPosition.z - 15);
+            document.getElementById('distanceDisplay').textContent = `${distZ.toFixed(1)} m`;
+
+            // Docking assist
+            const dockingAssist = document.getElementById('dockingAssist');
+            if (distZ < 10) {
+                dockingAssist.classList.add('active');
+                if (gameState.dockingAccuracy > 80) {
+                    dockingAssist.classList.add('success');
+                    dockingAssist.classList.remove('warning', 'danger');
+                    document.getElementById('dockingMessage').textContent = '✓ OPTIMAL APPROACH';
+                } else if (gameState.dockingAccuracy > 50) {
+                    dockingAssist.classList.add('warning');
+                    dockingAssist.classList.remove('success', 'danger');
+                    document.getElementById('dockingMessage').textContent = '⚠ ADJUST COURSE';
+                } else {
+                    dockingAssist.classList.add('danger');
+                    dockingAssist.classList.remove('success', 'warning');
+                    document.getElementById('dockingMessage').textContent = '✗ DANGER ZONE';
+                }
+            } else {
+                dockingAssist.classList.remove('active');
+            }
+
+            // Captain commands
+            const commandIndex = Math.floor(Math.random() * gameState.captainCommands.length);
+            if (Math.random() > 0.95) {
+                document.getElementById('commandDisplay').textContent = gameState.captainCommands[commandIndex];
+            }
+
+            displayLeaderboard();
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = 1 / 60;
+            updatePhysics(deltaTime);
+
+            // Update yacht mesh
+            yachtMesh.position.copy(gameState.yachtPosition);
+            yachtMesh.rotation.y = gameState.yachtRotation;
+
+            // Update camera to follow yacht
+            const cameraDistance = 25;
+            const cameraHeight = 15;
+            camera.position.x = gameState.yachtPosition.x + Math.sin(gameState.yachtRotation) * cameraDistance;
+            camera.position.y = cameraHeight;
+            camera.position.z = gameState.yachtPosition.z + Math.cos(gameState.yachtRotation) * cameraDistance;
+            camera.lookAt(gameState.yachtPosition.x, 2, gameState.yachtPosition.z);
+
+            updateUI();
+            renderer.render(scene, camera);
+        }
+
+        // Window resize handler
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', initScene);
+    </script>
+</body>
+</html>
