@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yacht Master: OKEAN Enterprise</title>
+    <!-- Bibliotecas Core via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Self-Configuration: Controlos Avançados de Editor 3D -->
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/TransformControls.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: #030811;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* UI HUD - Premium Enterprise */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .header {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            right: 30px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .header-titles {
+            pointer-events: auto;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 60%;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+        }
+
+        .title span {
+            color: #d4af37;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 5px;
+            letter-spacing: 2px;
+            font-weight: 600;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.8);
+        }
+
+        .panel {
+            position: absolute;
+            background: linear-gradient(135deg, rgba(10, 15, 25, 0.6), rgba(5, 8, 15, 0.8));
+            border: 1px solid rgba(212, 175, 55, 0.15);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            pointer-events: auto;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        }
+
+        .hud-left {
+            top: auto;
+            bottom: 30px;
+            left: 30px;
+            width: 240px;
+            border-left: 2px solid #d4af37;
+        }
+
+        .hud-right {
+            top: auto;
+            bottom: 30px;
+            right: 30px;
+            width: 240px;
+            border-right: 2px solid #d4af37;
+            text-align: right;
+        }
+
+        .hud-bottom {
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto;
+            padding: 15px 40px;
+            text-align: center;
+            border-bottom: 2px solid #d4af37;
+            border-top: 2px solid #d4af37;
+            border-radius: 8px;
+        }
+
+        /* GCRUX DEV CALIBRATION PANEL */
+        .hud-calib {
+            top: 100px;
+            left: 30px;
+            width: 360px;
+            border-left: 2px solid #ff3366;
+            display: none;
+            background: linear-gradient(135deg, rgba(20, 5, 10, 0.8), rgba(15, 5, 8, 0.9));
+        }
+
+        .hud-calib .data-label {
+            color: #ff6688;
+            margin-top: 10px;
+        }
+
+        .hud-calib .data-value {
+            font-size: 16px;
+            color: #ff3366;
+            margin-bottom: 5px;
+        }
+
+        .toolbox-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .data-label {
+            color: #a0aab5;
+            font-size: 10px;
+            margin-bottom: 4px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .data-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .data-value span {
+            color: #d4af37;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Glassmorphism Buttons */
+        .btn-ai,
+        .btn-upload,
+        .btn-action,
+        .btn-dev,
+        .btn-tool {
+            width: 100%;
+            padding: 10px 16px;
+            background: rgba(212, 175, 55, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            color: #d4af37;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 10px;
+            letter-spacing: 1px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .header-buttons .btn-ai,
+        .header-buttons .btn-upload,
+        .header-buttons .btn-action,
+        .header-buttons .btn-dev {
+            width: auto;
+        }
+
+        .btn-ai:hover,
+        .btn-action:hover,
+        .btn-tool:hover {
+            background: rgba(212, 175, 55, 0.25);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            border-color: rgba(212, 175, 55, 0.7);
+        }
+
+        .btn-tool.active {
+            background: rgba(212, 175, 55, 0.5);
+            color: #fff;
+            border-color: #d4af37;
+        }
+
+        .btn-upload {
+            background: rgba(0, 170, 255, 0.1);
+            border-color: rgba(0, 170, 255, 0.3);
+            color: #00aaff;
+        }
+
+        .btn-upload:hover {
+            background: rgba(0, 170, 255, 0.25);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(0, 170, 255, 0.4);
+            transform: translateY(-2px);
+            border-color: rgba(0, 170, 255, 0.7);
+        }
+
+        .btn-upload-env {
+            background: rgba(0, 255, 170, 0.1);
+            border-color: rgba(0, 255, 170, 0.3);
+            color: #00ffaa;
+        }
+
+        .btn-upload-env:hover {
+            background: rgba(0, 255, 170, 0.25);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(0, 255, 170, 0.4);
+            transform: translateY(-2px);
+            border-color: rgba(0, 255, 170, 0.7);
+        }
+
+        .btn-upload-water {
+            background: rgba(0, 136, 255, 0.1);
+            border-color: rgba(0, 136, 255, 0.3);
+            color: #0088ff;
+        }
+
+        .btn-upload-water:hover {
+            background: rgba(0, 136, 255, 0.25);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(0, 136, 255, 0.4);
+            transform: translateY(-2px);
+            border-color: rgba(0, 136, 255, 0.7);
+        }
+
+        .btn-dev {
+            background: rgba(255, 51, 102, 0.1);
+            border-color: rgba(255, 51, 102, 0.3);
+            color: #ff3366;
+        }
+
+        .btn-dev:hover {
+            background: rgba(255, 51, 102, 0.25);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(255, 51, 102, 0.4);
+            transform: translateY(-2px);
+            border-color: rgba(255, 51, 102, 0.7);
+        }
+
+        .btn-dev.active {
+            background: rgba(255, 51, 102, 0.4);
+            color: #fff;
+            border-color: #ff3366;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            margin: 10px 0 20px 0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #d4af37;
+            width: 0%;
+            transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 0 10px #d4af37;
+        }
+
+        /* Mensagens do Sistema */
+        .sys-msg {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            padding: 20px 40px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid;
+            display: none;
+            z-index: 2000;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* Modal AI */
+        .ai-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background: #0a0f19;
+            border: 1px solid #d4af37;
+            padding: 30px;
+            display: none;
+            z-index: 3000;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            pointer-events: auto;
+        }
+
+        .ai-modal.active {
+            display: block;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #030811;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(212, 175, 55, 0.3);
+            border-top-color: #d4af37;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div style="color: #d4af37; font-weight: bold; letter-spacing: 2px; font-size: 18px;">A INICIALIZAR ATIVOS 3D...
+        </div>
+        <div id="loadStatus" style="color: #888; font-size: 12px; margin-top: 10px;">A preparar motor de renderização...
+        </div>
+    </div>
+
+    <div class="sys-msg" id="sysMsg"></div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="ui-container">
+        <div class="header">
+            <div class="header-titles">
+                <div class="title">YACHT MASTER <span>OKEAN</span></div>
+                <div class="subtitle">GCRUX NAVAL PHYSICS ENGINE v14.0 (REAL HYDRODYNAMICS)</div>
+            </div>
+            <div class="header-buttons">
+                <button class="btn-dev" id="btnDev" onclick="toggleCalibration()">Mapeamento 3D 🛠️</button>
+                <button class="btn-ai" id="btnAI">Sistema IA ✨</button>
+
+                <input type="file" id="glbUpload" accept=".glb,.gltf" style="display: none;">
+                <button class="btn-upload" onclick="document.getElementById('glbUpload').click()">Modelo (.glb)
+                    ⚙️</button>
+
+                <input type="file" id="envUpload" accept=".glb,.gltf" style="display: none;">
+                <button class="btn-upload btn-upload-env" onclick="document.getElementById('envUpload').click()">Marina
+                    (.glb) 🌴</button>
+
+                <input type="file" id="waterUpload" accept=".glb,.gltf" style="display: none;">
+                <button class="btn-upload btn-upload-water"
+                    onclick="document.getElementById('waterUpload').click()">Oceano (.glb) 🌊</button>
+            </div>
+        </div>
+
+        <div class="panel hud-calib" id="calibPanel">
+            <div class="data-label">SELECIONAR ALVO (GIZMO MOUSE)</div>
+            <div class="toolbox-grid">
+                <button class="btn-tool active" id="btnT_yacht" onclick="attachGizmo('yacht')">🛥️ Iate</button>
+                <button class="btn-tool" id="btnT_marina" onclick="attachGizmo('marina')">🌴 Marina</button>
+                <button class="btn-tool" id="btnT_water" onclick="attachGizmo('water')">🌊 Oceano</button>
+                <button class="btn-tool" id="btnT_physics" onclick="attachGizmo('physics')">🟥 Colisão</button>
+            </div>
+
+            <div class="data-label">MODO DO MOUSE</div>
+            <div class="toolbox-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                <button class="btn-tool active" id="btnM_translate" onclick="setGizmoMode('translate')">Mover</button>
+                <button class="btn-tool" id="btnM_rotate" onclick="setGizmoMode('rotate')">Rodar</button>
+                <button class="btn-tool" id="btnM_scale" onclick="setGizmoMode('scale')">Escalar</button>
+            </div>
+
+            <div style="border-top: 1px solid rgba(255, 51, 102, 0.3); padding-top: 10px; margin-top: 10px;">
+                <div class="data-label">DADOS DO OBJETO SELECIONADO</div>
+                <div class="data-value" id="calibCoords" style="font-size: 12px; margin-bottom: 4px;">POS: X: 0.00 | Y:
+                    0.00 | Z: 0.00</div>
+                <div class="data-value" id="calibRot" style="font-size: 12px; margin-bottom: 4px;">ROT: X: 0.0° | Y:
+                    0.0° | Z: 0.0°</div>
+                <div class="data-value" id="calibScale" style="font-size: 12px; margin-bottom: 0;">SCL: X: 1.000 | Y:
+                    1.000 | Z: 1.000</div>
+            </div>
+
+            <div
+                style="font-size: 10px; color: #aaa; margin-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px;">
+                * Câmara Livre ativada: Clique esquerdo roda, Direito arrasta, Scroll faz zoom.
+            </div>
+        </div>
+
+        <div class="panel hud-left">
+            <div class="data-label">VELOCIDADE (SPD)</div>
+            <div class="data-value" id="spdVal">0.0 <span>KN</span></div>
+
+            <div class="data-label">POTÊNCIA (PWR)</div>
+            <div class="data-value" id="pwrVal">0 <span>%</span></div>
+
+            <div class="data-label">RUMO (HDG)</div>
+            <div class="data-value" id="hdgVal" style="margin-bottom: 0;">000 <span>°</span></div>
+        </div>
+
+        <div class="panel hud-bottom" id="cmdPanel">
+            <span
+                style="color: #888; font-size: 10px; display: block; margin-bottom: 5px; letter-spacing: 1px;">COMANDOS
+                DE NAVEGAÇÃO</span>
+            <span style="color: #fff; font-weight: bold; margin: 0 10px;">W / S</span> (Motor) •
+            <span style="color: #fff; font-weight: bold; margin: 0 10px;">A / D</span> (Leme) •
+            <span style="color: #d4af37; font-weight: bold; margin: 0 10px;">ESPAÇO</span> (Reiniciar)
+        </div>
+
+        <div class="panel hud-right">
+            <div class="data-label">DISTÂNCIA AO ALVO (DST)</div>
+            <div class="data-value" id="dstVal">--- <span>M</span></div>
+
+            <div class="data-label">ALINHAMENTO (ACC)</div>
+            <div class="progress-container" style="margin-bottom: 8px;">
+                <div class="progress-bar" id="accBar"></div>
+            </div>
+            <div class="data-value" id="accVal" style="margin-bottom: 0;">0.0 <span>%</span></div>
+        </div>
+    </div>
+
+    <div id="aiModal" class="ai-modal">
+        <div
+            style="color: #d4af37; font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid rgba(212,175,55,0.3); padding-bottom: 10px;">
+            GCRUX AI REPORT ✨</div>
+        <div id="aiText" style="color: #ccc; font-size: 14px; line-height: 1.6; margin-bottom: 25px;">A aguardar
+            telemetria...</div>
+        <button class="btn-action" style="width: 100%;"
+            onclick="document.getElementById('aiModal').classList.remove('active')">Reconhecido</button>
+    </div>
+
+
+
+    <script>
+        // --- AUTONOMIC CONFIGURATION (REAL NAVAL PHYSICS ENGINE) ---
+        const apiKey = "";
+
+        // ========== DADOS REAIS DE UM IATE MOTOR ~50ft (15m) ==========
+        // Hull Speed Formula: Vhull = 1.34 * sqrt(LWL_ft) => ~9.5 kn para 50ft
+        // Massa real: ~18.000 kg (displacement hull, 50ft motor yacht)
+        // Potência típica: 2x 370HP (550kW total)
+        // Velocidade máxima: ~28-32 kn (semi-planing)
+        // Turning circle: ~3-4x comprimento do barco em raio
+        // Coeficiente de arrasto friccional (Cf): ~0.003 para Re típico
+        // Coeficiente de resistência de onda (Cw): cresce com Froude number
+        // ==============================================================
+
+        const NAVAL = {
+            LWL_m: 14.5,            // Comprimento na linha d'água (metros)
+            LWL_ft: 47.6,           // ~50 pés
+            beam_m: 4.5,            // Boca (largura) metros
+            draft_m: 1.2,           // Calado metros
+            displacement_kg: 18000, // Deslocamento real em kg
+            wettedArea_m2: 85,      // Área molhada estimada
+            maxPower_kW: 550,       // Potência máxima combinada (2 motores)
+            propEfficiency: 0.55,   // Eficiência da hélice
+            maxRudderAngle: 35,     // Ângulo máximo do leme (graus)
+            turningRadiusFactor: 3.5, // Raio de giro = fator * comprimento
+            Cd_friction: 0.0015,    // Coef. de arrasto friccional (reduzido p/ semi-planing hull)
+            Cd_form: 0.04,          // Coef. de arrasto de forma (otimizado p/ hull eficiente)
+            rho_water: 1025,        // Densidade água salgada kg/m³
+            gravity: 9.81,
+            // Resposta a ondas (seakeeping)
+            naturalRollPeriod: 6.0,   // Período natural de roll (segundos)
+            rollDamping: 0.15,        // Amortecimento do roll
+            GM_m: 1.2,               // Altura metacêntrica (estabilidade)
+        };
+
+        // Ondas oceânicas (Gerstner simplificado com superposição)
+        const WAVES = [
+            { amplitude: 0.35, frequency: 0.15, speed: 1.2, direction: 0.0 },     // Swell principal
+            { amplitude: 0.18, frequency: 0.28, speed: 0.8, direction: 0.5 },     // Onda secundária
+            { amplitude: 0.08, frequency: 0.55, speed: 1.5, direction: -0.3 },    // Chop
+            { amplitude: 0.04, frequency: 1.1, speed: 2.0, direction: 0.8 },     // Ripple
+        ];
+
+        const state = {
+            throttle: 0, rudder: 0, accuracy: 0,
+            healing: false, aiActive: false, loaded: false,
+            heave: 0, pitch: 0, roll: 0,  // Resposta do casco às ondas
+            waveTime: 0,
+
+            targetPoint: new THREE.Vector3(0, 0, 0),
+            spawnPoint: new THREE.Vector3(30.75, -0.56, -8.78),
+            baseY: -0.56,
+            envBaseY: 0.00,
+            waterBaseY: 0.00,
+            collisionScaleX: 3.689 / 2,
+            collisionScaleY: Math.abs(-1.536) / 2,
+            collisionScaleZ: 6.359 / 2,
+            yachtRotY: 0.6,
+
+            isCalibrating: false
+        };
+
+        let scene, camera, renderer, world, yacht, yachtBody, environmentGroup;
+        let proceduralDockBody;
+        let customMarinaWrapper, customWaterWrapper;
+        let proceduralWaterMesh; // Referência à água procedural para animar vértices
+
+        let yachtHelper, envHelper, physicsDebugMesh, waterGrid;
+        let orbitControls, transformControl;
+
+        let currentYachtSize = new THREE.Vector3(6, 5, 20);
+
+        let mixers = [];
+        const clock = new THREE.Clock();
+        const keys = {};
+
+        // ========== FUNÇÕES DE FÍSICA NAVAL REAL ==========
+
+        // Calcula altura da onda num ponto (x,z) e tempo t
+        function getWaveHeight(x, z, t) {
+            let h = 0;
+            for (const w of WAVES) {
+                const dx = Math.cos(w.direction);
+                const dz = Math.sin(w.direction);
+                h += w.amplitude * Math.sin((x * dx + z * dz) * w.frequency + t * w.speed);
+            }
+            return h;
+        }
+
+        // Calcula normal da superfície para pitch/roll
+        function getWaveNormal(x, z, t, delta) {
+            const hC = getWaveHeight(x, z, t);
+            const hX = getWaveHeight(x + delta, z, t);
+            const hZ = getWaveHeight(x, z + delta, t);
+            // Gradiente numérico
+            const dhdx = (hX - hC) / delta;
+            const dhdz = (hZ - hC) / delta;
+            return { dhdx, dhdz, height: hC };
+        }
+
+        // Resistência total do casco (Froude method)
+        function calcHullResistance(speedMS) {
+            if (speedMS < 0.01) return 0;
+            const V = Math.abs(speedMS);
+            // Número de Froude: Fn = V / sqrt(g * LWL)
+            const Fn = V / Math.sqrt(NAVAL.gravity * NAVAL.LWL_m);
+
+            // Resistência friccional: Rf = 0.5 * rho * Cf * S * V²
+            const Rf = 0.5 * NAVAL.rho_water * NAVAL.Cd_friction * NAVAL.wettedArea_m2 * V * V;
+
+            // Resistência de onda: cresce exponencialmente com Froude number
+            // Cw aproximado: 0 abaixo de Fn 0.2, cresce rápido até Fn 0.5 (hull speed wall)
+            let Cw = 0;
+            if (Fn > 0.2) {
+                Cw = NAVAL.Cd_form * Math.pow(Fn / 0.5, 3); // Semi-planing: menos agressivo
+                if (Fn > 0.5) Cw *= 1.2; // Hull speed wall mais suave
+            }
+            const Rw = 0.5 * NAVAL.rho_water * Cw * NAVAL.wettedArea_m2 * V * V * 0.4;
+
+            return (Rf + Rw) * Math.sign(speedMS);
+        }
+
+        // Força de propulsão real (limitada pela potência)
+        function calcThrustForce(throttleInput) {
+            // P = F * V, logo F = P / V (limitado)
+            const powerW = NAVAL.maxPower_kW * 1000 * Math.abs(throttleInput) * NAVAL.propEfficiency;
+            // Thrust estático (bollard pull) - ~40N por kW
+            const maxStaticThrust = NAVAL.maxPower_kW * 50 * Math.abs(throttleInput);
+            return maxStaticThrust * Math.sign(throttleInput);
+        }
+
+        // Taxa de viragem real baseada em ângulo do leme e velocidade
+        function calcTurnRate(rudderInput, speedMS) {
+            if (speedMS < 0.05) return 0;
+            // Raio mínimo de giro (~50m para um 50ft yacht)
+            const minRadius = NAVAL.turningRadiusFactor * NAVAL.LWL_m;
+            const rudderFraction = Math.abs(rudderInput);
+            // Raio efetivo: leme a 100% = raio mínimo, 0% = reto
+            const effectiveRadius = minRadius / Math.max(0.1, rudderFraction);
+            // omega = V / R
+            let rate = (speedMS / effectiveRadius) * Math.sign(rudderInput);
+            // Boost para manobras em porto (abaixo de 4 m/s ~7.8 kn)
+            if (speedMS < 4) rate *= 3.0;
+            return rate;
+        }
+
+        // --- FUNÇÕES AUXILIARES E IA ---
+        function showSysMsg(txt, color) {
+            const el = document.getElementById('sysMsg');
+            if (!el) return;
+            el.innerText = txt;
+            el.style.color = color;
+            el.style.borderColor = color;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        async function getAIAdvice() {
+            if (state.aiActive) return;
+            state.aiActive = true;
+            document.getElementById('btnAI').innerText = "A PROCESSAR...";
+
+            const spd = yachtBody ? (yachtBody.velocity.length() * 1.944).toFixed(1) : 0;
+            let dist = 100;
+            if (yacht) dist = yacht.position.distanceTo(state.targetPoint).toFixed(1);
+
+            const prompt = `Analise: Iate a ${spd} nós, a ${dist}m do cais. Dê um conselho de manobra de atracagem muito curto (1 frase) em PT-PT, com tom de capitão de luxo.`;
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                document.getElementById('aiText').innerText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Falha de rede.";
+            } catch (e) {
+                document.getElementById('aiText').innerText = "Rádio offline.";
+            }
+
+            document.getElementById('aiModal').classList.add('active');
+            document.getElementById('btnAI').innerText = "Sistema IA ✨";
+            state.aiActive = false;
+        }
+
+        // --- PROCEDURAL YACHT BUILDER ---
+        function buildOkeanYacht() {
+            const group = new THREE.Group();
+            const internalYachtMesh = new THREE.Group();
+
+            const matHull = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.2, metalness: 0.1 });
+            const matDeck = new THREE.MeshStandardMaterial({ color: 0xc2a077, roughness: 0.9 });
+            const matGlass = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.8 });
+            const matDark = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+
+            const hull = new THREE.Mesh(new THREE.BoxGeometry(6, 2.5, 20), matHull);
+            hull.position.y = -0.5; hull.castShadow = true; internalYachtMesh.add(hull);
+
+            const bow = new THREE.Mesh(new THREE.CylinderGeometry(0, 3, 6, 4), matHull);
+            bow.rotation.x = Math.PI / 2; bow.rotation.y = Math.PI / 4;
+            bow.position.set(0, -0.5, -13); bow.castShadow = true; internalYachtMesh.add(bow);
+
+            const aftDeck = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.2, 6), matDeck);
+            aftDeck.position.set(0, 0.8, 7); internalYachtMesh.add(aftDeck);
+
+            const cabin = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.2, 12), matDark);
+            cabin.position.set(0, 1.8, -1); cabin.castShadow = true; internalYachtMesh.add(cabin);
+
+            const windowL = new THREE.Mesh(new THREE.BoxGeometry(5.3, 1.2, 10), matGlass);
+            windowL.position.set(0, 1.8, -1); internalYachtMesh.add(windowL);
+
+            const flydeck = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.2, 8), matHull);
+            flydeck.position.set(0, 3.0, -1); flydeck.castShadow = true; internalYachtMesh.add(flydeck);
+
+            const hardtop = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.2, 6), matDark);
+            hardtop.position.set(0, 4.5, -1.5); hardtop.castShadow = true; internalYachtMesh.add(hardtop);
+
+            group.add(internalYachtMesh);
+            return group;
+        }
+
+        // --- SISTEMA DE GIZMO E DEV MODE ---
+        function toggleCalibration() {
+            state.isCalibrating = !state.isCalibrating;
+            const btn = document.getElementById('btnDev');
+            const panel = document.getElementById('calibPanel');
+            const cmdPanel = document.getElementById('cmdPanel');
+
+            if (state.isCalibrating) {
+                btn.classList.add('active');
+                panel.style.display = 'block';
+                cmdPanel.style.display = 'none';
+
+                if (yachtHelper) scene.add(yachtHelper);
+                if (envHelper) scene.add(envHelper);
+                if (physicsDebugMesh) physicsDebugMesh.visible = true;
+                if (waterGrid) waterGrid.visible = true;
+
+                if (orbitControls) {
+                    orbitControls.enabled = true;
+                    orbitControls.target.copy(yacht.position);
+                    camera.position.set(yacht.position.x + 50, 50, yacht.position.z + 100);
+                }
+                if (transformControl) {
+                    scene.add(transformControl);
+                    attachGizmo('yacht');
+                }
+
+                showSysMsg("MODO MAPEAMENTO ATIVADO", "#ff3366");
+            } else {
+                btn.classList.remove('active');
+                panel.style.display = 'none';
+                cmdPanel.style.display = 'block';
+
+                if (yachtHelper) scene.remove(yachtHelper);
+                if (envHelper) scene.remove(envHelper);
+                if (physicsDebugMesh) physicsDebugMesh.visible = false;
+                if (waterGrid) waterGrid.visible = false;
+
+                if (orbitControls) orbitControls.enabled = false;
+                if (transformControl) {
+                    transformControl.detach();
+                    scene.remove(transformControl);
+                }
+
+                // Guardar os ajustes visuais no estado de física
+                state.spawnPoint.copy(yacht.position);
+                state.baseY = yacht.position.y;
+                if (customMarinaWrapper) state.envBaseY = customMarinaWrapper.position.y;
+                if (customWaterWrapper) state.waterBaseY = customWaterWrapper.position.y;
+
+                updateYachtPhysicsBody();
+                resetPos();
+
+                console.log(`[GCRUX SET-AND-FORGET] Coordenadas:\nspawnPoint: ${state.spawnPoint.x.toFixed(2)}, ${state.spawnPoint.y.toFixed(2)}, ${state.spawnPoint.z.toFixed(2)}`);
+            }
+        }
+
+        function setGizmoMode(mode) {
+            if (transformControl) transformControl.setMode(mode);
+            document.querySelectorAll('#btnM_translate, #btnM_rotate, #btnM_scale').forEach(el => el.classList.remove('active'));
+            document.getElementById('btnM_' + mode).classList.add('active');
+        }
+
+        function attachGizmo(target) {
+            if (!transformControl) return;
+            document.querySelectorAll('#btnT_yacht, #btnT_marina, #btnT_water, #btnT_physics').forEach(el => el.classList.remove('active'));
+            document.getElementById('btnT_' + target).classList.add('active');
+
+            if (target === 'yacht' && yacht) transformControl.attach(yacht);
+            if (target === 'marina' && customMarinaWrapper) transformControl.attach(customMarinaWrapper);
+            if (target === 'water' && customWaterWrapper) transformControl.attach(customWaterWrapper);
+            if (target === 'physics' && physicsDebugMesh) transformControl.attach(physicsDebugMesh);
+
+            updateCalibHUD();
+        }
+
+        function updateCalibHUD() {
+            if (!transformControl || !transformControl.object) return;
+            const obj = transformControl.object;
+            const coordsEl = document.getElementById('calibCoords');
+            const rotEl = document.getElementById('calibRot');
+            const scaleEl = document.getElementById('calibScale');
+
+            if (coordsEl) coordsEl.innerText = `POS: X: ${obj.position.x.toFixed(2)} | Y: ${obj.position.y.toFixed(2)} | Z: ${obj.position.z.toFixed(2)}`;
+
+            const rx = (obj.rotation.x * 180 / Math.PI).toFixed(1);
+            const ry = (obj.rotation.y * 180 / Math.PI).toFixed(1);
+            const rz = (obj.rotation.z * 180 / Math.PI).toFixed(1);
+            if (rotEl) rotEl.innerText = `ROT: X: ${rx}° | Y: ${ry}° | Z: ${rz}°`;
+
+            if (scaleEl) scaleEl.innerText = `SCL: X: ${obj.scale.x.toFixed(3)} | Y: ${obj.scale.y.toFixed(3)} | Z: ${obj.scale.z.toFixed(3)}`;
+        }
+
+        function updatePhysicsBodyFromGizmo() {
+            if (!proceduralDockBody || !physicsDebugMesh) return;
+            // Utiliza-se o escalonamento da malha extraído diretamente do editor
+            const scaleX = Math.abs(physicsDebugMesh.scale.x) / 2;
+            const scaleY = Math.abs(physicsDebugMesh.scale.y) / 2;
+            const scaleZ = Math.abs(physicsDebugMesh.scale.z) / 2;
+            state.collisionScaleX = scaleX;
+            state.collisionScaleY = scaleY;
+            state.collisionScaleZ = scaleZ;
+
+            world.removeBody(proceduralDockBody);
+            proceduralDockBody = new CANNON.Body({
+                mass: 0,
+                shape: new CANNON.Box(new CANNON.Vec3(scaleX, scaleY, scaleZ)),
+                position: new CANNON.Vec3(physicsDebugMesh.position.x, physicsDebugMesh.position.y, physicsDebugMesh.position.z)
+            });
+            world.addBody(proceduralDockBody);
+            state.targetPoint.copy(physicsDebugMesh.position);
+        }
+
+        // FÍSICA DINÂMICA DA RIVA AQUARAMA
+        function updateYachtPhysicsBody() {
+            if (!yacht || !world) return;
+            const bbox = new THREE.Box3().setFromObject(yacht);
+            currentYachtSize = bbox.getSize(new THREE.Vector3());
+
+            if (yachtBody) world.removeBody(yachtBody);
+
+            yachtBody = new CANNON.Body({
+                mass: NAVAL.displacement_kg,
+                shape: new CANNON.Box(new CANNON.Vec3(currentYachtSize.x / 2, currentYachtSize.y / 2, currentYachtSize.z / 2)),
+                position: new CANNON.Vec3(state.spawnPoint.x, state.baseY, state.spawnPoint.z),
+                linearDamping: 0.06, angularDamping: 0.85
+            });
+            yachtBody.quaternion.copy(yacht.quaternion);
+            world.addBody(yachtBody);
+            yachtBody.addEventListener('collide', handleCollision);
+        }
+
+        function handleCollision() {
+            if (state.healing) return;
+            state.healing = true;
+            const speed = yachtBody.velocity.length() * 1.944;
+
+            if (speed <= 2.5) {
+                showSysMsg("⚓ ATRACAGEM CONCLUÍDA COM SUCESSO!", "#00ff00");
+                state.throttle = 0;
+                setTimeout(() => { state.healing = false; }, 4000);
+            } else {
+                showSysMsg("⚠️ FORTE IMPACTO NO CASCO • A REPARAR...", "#ff3333");
+                const canvas = document.getElementById('canvas');
+                if (canvas) {
+                    canvas.style.transform = "translate(15px, 15px)";
+                    setTimeout(() => canvas.style.transform = "translate(0, 0)", 100);
+                }
+                setTimeout(() => { resetPos(); state.healing = false; }, 2500);
+            }
+        }
+
+        // --- ONBOARDING FUNÇÕES (AUTO-LOAD E MANUAL) ---
+        function onboardYacht(gltf) {
+            if (yacht) {
+                if (transformControl && transformControl.object === yacht) transformControl.detach();
+                scene.remove(yacht);
+            }
+            if (yachtHelper) scene.remove(yachtHelper);
+
+            const rawModel = gltf.scene;
+            const toRemove = [];
+            rawModel.traverse(node => {
+                if (node.isLight || node.isCamera) toRemove.push(node);
+                if (node.isMesh) {
+                    node.castShadow = true; node.receiveShadow = true; node.frustumCulled = false;
+                    if (node.material) node.material.side = THREE.DoubleSide;
+                }
+            });
+            toRemove.forEach(n => { if (n.parent) n.parent.remove(n); });
+
+            const bbox = new THREE.Box3().setFromObject(rawModel);
+            const center = bbox.getCenter(new THREE.Vector3());
+
+            rawModel.position.set(-center.x, 0, -center.z);
+
+            yacht = new THREE.Group();
+            const internalYachtMesh = new THREE.Group();
+            internalYachtMesh.add(rawModel);
+            yacht.add(internalYachtMesh);
+
+            const scaleFactor = 0.375;
+            yacht.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            scene.add(yacht);
+            yacht.position.copy(state.spawnPoint);
+
+            if (yachtBody) {
+                yachtBody.quaternion.setFromEuler(0, state.yachtRotY * Math.PI / 180, 0);
+            }
+
+            updateYachtPhysicsBody();
+
+            yachtHelper = new THREE.BoxHelper(yacht, 0xffff00);
+            if (state.isCalibrating) scene.add(yachtHelper);
+            if (state.isCalibrating) attachGizmo('yacht');
+            showSysMsg("MODELO CARREGADO E AFINADO", "#00ff00");
+        }
+
+        function onboardOcean(gltf) {
+            const pWater = scene.getObjectByName("proceduralWater");
+            if (pWater && pWater.parent) pWater.parent.remove(pWater);
+            if (customWaterWrapper && customWaterWrapper.parent) {
+                if (transformControl && transformControl.object === customWaterWrapper) transformControl.detach();
+                customWaterWrapper.parent.remove(customWaterWrapper);
+            }
+
+            const waterModel = gltf.scene;
+
+            const toRemove = [];
+            waterModel.traverse(node => {
+                if (node.isLight || node.isCamera) toRemove.push(node);
+                if (node.isMesh) {
+                    node.receiveShadow = true; node.frustumCulled = false;
+                    if (node.material) {
+                        node.material.side = THREE.DoubleSide;
+                        node.material.transparent = true;
+                        node.material.depthWrite = false;
+                    }
+                }
+            });
+            toRemove.forEach(n => { if (n.parent) n.parent.remove(n); });
+
+            const bbox = new THREE.Box3().setFromObject(waterModel);
+            const center = bbox.getCenter(new THREE.Vector3());
+
+            const scaleFactor = 0.245;
+            waterModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            waterModel.position.set(-center.x * scaleFactor, 0, -center.z * scaleFactor);
+
+            customWaterWrapper = new THREE.Group();
+            customWaterWrapper.add(waterModel);
+            customWaterWrapper.position.y = state.waterBaseY;
+            environmentGroup.add(customWaterWrapper);
+
+            if (gltf.animations && gltf.animations.length > 0) {
+                const mixer = new THREE.AnimationMixer(waterModel);
+                mixer.timeScale = 0.15;
+                gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
+                mixers.push(mixer);
+            }
+
+            if (state.isCalibrating) attachGizmo('water');
+            showSysMsg("OCEANO ATIVADO COM SUCESSO", "#0088ff");
+        }
+
+        function onboardMarina(gltf) {
+            const oldDock = scene.getObjectByName("proceduralDock");
+            if (oldDock && oldDock.parent) oldDock.parent.remove(oldDock);
+
+            if (customMarinaWrapper && customMarinaWrapper.parent) {
+                if (transformControl && transformControl.object === customMarinaWrapper) transformControl.detach();
+                customMarinaWrapper.parent.remove(customMarinaWrapper);
+            }
+
+            if (world && proceduralDockBody) world.removeBody(proceduralDockBody);
+            if (envHelper) scene.remove(envHelper);
+
+            const envModel = gltf.scene;
+
+            const toRemove = [];
+            envModel.traverse(node => {
+                if (node.isLight || node.isCamera) toRemove.push(node);
+                if (node.isMesh) {
+                    node.castShadow = true; node.receiveShadow = true; node.frustumCulled = false;
+                    if (node.material) node.material.side = THREE.DoubleSide;
+                }
+            });
+            toRemove.forEach(n => { if (n.parent) n.parent.remove(n); });
+
+            const bbox = new THREE.Box3().setFromObject(envModel);
+            const center = bbox.getCenter(new THREE.Vector3());
+
+            customMarinaWrapper = new THREE.Group();
+            const scaleFactor = 1.000;
+            envModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            envModel.position.set(-center.x * scaleFactor, 0, -center.z * scaleFactor);
+
+            customMarinaWrapper.add(envModel);
+            customMarinaWrapper.position.y = state.envBaseY;
+            environmentGroup.add(customMarinaWrapper);
+
+            envHelper = new THREE.BoxHelper(customMarinaWrapper, 0x00ffff);
+            if (state.isCalibrating) scene.add(envHelper);
+
+            proceduralDockBody = new CANNON.Body({
+                mass: 0,
+                shape: new CANNON.Box(new CANNON.Vec3(state.collisionScaleX, state.collisionScaleY || 20, state.collisionScaleZ)),
+                position: new CANNON.Vec3(0, state.envBaseY, 0)
+            });
+            world.addBody(proceduralDockBody);
+
+            if (physicsDebugMesh) scene.remove(physicsDebugMesh);
+            physicsDebugMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true, transparent: true, opacity: 0.3 })
+            );
+            physicsDebugMesh.scale.set(state.collisionScaleX * 2, (state.collisionScaleY * 2) || 40, state.collisionScaleZ * 2);
+            physicsDebugMesh.position.set(0, state.envBaseY, 0);
+            physicsDebugMesh.visible = state.isCalibrating;
+            scene.add(physicsDebugMesh);
+
+            if (state.isCalibrating) attachGizmo('marina');
+            showSysMsg("CENÁRIO PRONTO (SET-AND-FORGET)", "#00ffaa");
+        }
+
+        // --- UPLOAD DE BARCO (Self-Optimization Baseado nos teus Dados) ---
+        document.getElementById('glbUpload').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                showSysMsg("A PROCESSAR NOVO MODELO 3D...", "#00aaff");
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    new THREE.GLTFLoader().parse(e.target.result, '', onboardYacht, function (error) { console.error(error); showSysMsg("FALHA AO PROCESSAR ARQUIVO", "#ff3333"); });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // --- UPLOAD DE OCEANO ---
+        document.getElementById('waterUpload').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                showSysMsg("A PROCESSAR OCEANO ANIMADO...", "#0088ff");
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    new THREE.GLTFLoader().parse(e.target.result, '', onboardOcean, function (error) { console.error(error); showSysMsg("FALHA AO PROCESSAR OCEANO", "#ff3333"); });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // --- UPLOAD DE MARINA ---
+        document.getElementById('envUpload').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                showSysMsg("A PROCESSAR NOVA MARINA...", "#00ffaa");
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    new THREE.GLTFLoader().parse(e.target.result, '', onboardMarina, function (error) { console.error(error); showSysMsg("FALHA AO PROCESSAR CENÁRIO", "#ff3333"); });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+
+        // --- SISTEMA BASE ---
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a1420);
+            scene.fog = new THREE.FogExp2(0x0a1420, 0.0015);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 5000);
+
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            pmremGenerator.compileEquirectangularShader();
+
+            scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+
+            const sunLight = new THREE.DirectionalLight(0xffeeb1, 2.5);
+            sunLight.position.set(400, 300, -400);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 2000;
+            sunLight.shadow.camera.left = -500;
+            sunLight.shadow.camera.right = 500;
+            sunLight.shadow.camera.top = 500;
+            sunLight.shadow.camera.bottom = -500;
+            sunLight.shadow.bias = -0.0005;
+            scene.add(sunLight);
+
+            const fillLight = new THREE.DirectionalLight(0x88bbff, 0.8);
+            fillLight.position.set(-100, 20, 100);
+            scene.add(fillLight);
+
+            scene.environment = pmremGenerator.fromScene(scene).texture;
+
+            environmentGroup = new THREE.Group();
+            scene.add(environmentGroup);
+
+            orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+            orbitControls.enabled = false;
+            orbitControls.enableDamping = true;
+            orbitControls.dampingFactor = 0.05;
+
+            transformControl = new THREE.TransformControls(camera, renderer.domElement);
+            transformControl.addEventListener('dragging-changed', function (event) {
+                orbitControls.enabled = !event.value && state.isCalibrating;
+                if (!event.value && transformControl.object === physicsDebugMesh) {
+                    updatePhysicsBodyFromGizmo();
+                }
+            });
+            transformControl.addEventListener('change', updateCalibHUD);
+
+            const water = new THREE.Mesh(
+                new THREE.PlaneGeometry(800, 800, 128, 128),
+                new THREE.MeshStandardMaterial({
+                    color: 0x021a2a, metalness: 0.92, roughness: 0.08,
+                    transparent: true, opacity: 0.85, depthWrite: false,
+                    flatShading: false
+                })
+            );
+            water.rotation.x = -Math.PI / 2;
+            water.name = "proceduralWater";
+            proceduralWaterMesh = water;
+            environmentGroup.add(water);
+
+            const dockGroup = new THREE.Group();
+            dockGroup.name = "proceduralDock";
+            const dock = new THREE.Mesh(new THREE.BoxGeometry(60, 3, 15), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+            dock.position.set(0, 0, 45);
+            dock.castShadow = true; dock.receiveShadow = true;
+            dockGroup.add(dock);
+            environmentGroup.add(dockGroup);
+
+            gridHelper = new THREE.GridHelper(500, 50, 0x00aaff, 0x0055aa);
+            waterGrid = gridHelper;
+            waterGrid.visible = false;
+            scene.add(waterGrid);
+
+            yacht = buildOkeanYacht();
+            scene.add(yacht);
+
+            document.getElementById('btnAI').onclick = getAIAdvice;
+
+            document.getElementById('loadingOverlay').style.opacity = '0';
+            setTimeout(() => { document.getElementById('loadingOverlay').style.display = 'none'; state.loaded = true; }, 500);
+
+            world = new CANNON.World();
+            world.gravity.set(0, 0, 0);
+
+            updateYachtPhysicsBody();
+
+            proceduralDockBody = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(state.collisionScaleX, state.collisionScaleY || 20, state.collisionScaleZ)), position: new CANNON.Vec3(0, 0, 45) });
+            world.addBody(proceduralDockBody);
+
+            window.onkeydown = (e) => { keys[e.key.toLowerCase()] = true; if (e.code === 'Space') resetPos(); };
+            window.onkeyup = (e) => keys[e.key.toLowerCase()] = false;
+
+            resetPos(); // Ajusta a rotação inicial
+            // AUTO-DETECCAO ELITE GCRUX (OKEAN ENTEPRISE)
+            async function verifyAndLoad(file, callback) {
+                try {
+                    const response = await fetch(file, { method: 'HEAD' });
+                    if (response.ok) {
+                        new THREE.GLTFLoader().load(file, callback);
+                        return true;
+                    }
+                } catch (e) {}
+                return false;
+            }
+
+            async function autoDetect() {
+                const results = await Promise.all([
+                    verifyAndLoad('yacht_iv.glb', onboardYacht),
+                    verifyAndLoad('ocean__water_perfect_loop.glb', onboardOcean),
+                    verifyAndLoad('dock_house_-_stylized_wooden_pier.glb', onboardMarina)
+                ]);
+                if (results.some(r => r)) {
+                    const aiTextEl = document.getElementById('aiText');
+                    if (aiTextEl) aiTextEl.innerText = "Ativos locais detectados. Sincronizando ambiente OKEAN...";
+                    showSysMsg("ATIVOS LOCAIS CARREGADOS", "#00ffaa");
+                }
+            }
+            
+            autoDetect();
+            animate();
+        }
+
+        function resetPos() {
+            if (yachtBody && !state.isCalibrating) {
+                yachtBody.position.set(state.spawnPoint.x, state.baseY, state.spawnPoint.z);
+                yachtBody.velocity.set(0, 0, 0);
+                yachtBody.angularVelocity.set(0, 0, 0);
+
+                // Direção inicial baseada na rotação predefinida
+                yachtBody.quaternion.setFromEuler(0, state.yachtRotY * Math.PI / 180, 0);
+            }
+            state.throttle = 0; state.rudder = 0;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!state.loaded) return;
+
+            if (state.isCalibrating) {
+                if (orbitControls) orbitControls.update();
+
+                if (transformControl && transformControl.object === yacht && yachtBody) {
+                    yachtBody.position.copy(yacht.position);
+                    yachtBody.quaternion.copy(yacht.quaternion);
+                }
+            }
+
+            if (!state.isCalibrating && yachtBody) {
+                const dt = 1 / 60;
+                state.waveTime += dt;
+
+                // === THROTTLE: Resposta de motor diesel real (inércia de turbina) ===
+                if (keys['w']) state.throttle = Math.min(state.throttle + 0.008, 1);      // Aceleração gradual
+                else if (keys['s']) state.throttle = Math.max(state.throttle - 0.012, -0.3); // Ré mais lenta
+                else state.throttle *= 0.985; // Desaceleração natural do motor
+
+                // === LEME: Resposta hidráulica real (35° max, ~2s para full lock) ===
+                if (keys['a']) state.rudder = Math.min(state.rudder + 0.05, 1.0);
+                else if (keys['d']) state.rudder = Math.max(state.rudder - 0.05, -1.0);
+                else state.rudder *= 0.88; // Retorno ao centro assistido
+
+                // === PROPULSÃO NAVAL REAL ===
+                const euler = new CANNON.Vec3();
+                yachtBody.quaternion.toEuler(euler);
+                const speedMS = yachtBody.velocity.length();
+                const speedKn = speedMS * 1.944;
+
+                // Direção do heading do iate
+                const headX = Math.sin(euler.y);
+                const headZ = Math.cos(euler.y);
+
+                // Velocidade projetada na direção do casco (+ = frente, - = ré)
+                const headingSpeed = yachtBody.velocity.x * headX + yachtBody.velocity.z * headZ;
+
+                // Força de propulsão (thrust)
+                const thrust = calcThrustForce(state.throttle);
+                // Resistência do casco (drag) - SEMPRE opõe a direção do movimento
+                const resistanceMag = calcHullResistance(speedMS);
+                const resistanceSigned = resistanceMag * Math.sign(headingSpeed);
+                // Força líquida: thrust avança, resistance opõe o movimento
+                const netForce = thrust - resistanceSigned;
+
+                // Aplicar força na direção do casco
+                yachtBody.applyForce(
+                    new CANNON.Vec3(headX * netForce, 0, headZ * netForce),
+                    yachtBody.position
+                );
+
+                // === VIRAGEM NAVAL REAL ===
+                const turnRate = calcTurnRate(state.rudder, speedMS);
+                yachtBody.angularVelocity.y = turnRate;
+
+                // === SISTEMA DE ONDAS E FLUTUAÇÃO (HEAVE, PITCH, ROLL) ===
+                const px = yachtBody.position.x;
+                const pz = yachtBody.position.z;
+                const t = state.waveTime;
+                const sampleDist = NAVAL.LWL_m * 0.4; // Metade do comprimento
+
+                const waveData = getWaveNormal(px, pz, t, sampleDist);
+
+                // Heave (movimento vertical do casco sobre as ondas)
+                const targetHeave = waveData.height;
+                state.heave += (targetHeave - state.heave) * 0.08; // Amortecimento
+
+                // Pitch (inclinação proa-popa baseada no gradiente da onda)
+                const wavePitch = -Math.atan(waveData.dhdz) * 0.6;
+                // Adicionar pitch de aceleração (trim)
+                const accelPitch = -state.throttle * 0.03;
+                state.pitch += ((wavePitch + accelPitch) - state.pitch) * 0.06;
+
+                // Roll (balanço lateral)
+                const waveRoll = Math.atan(waveData.dhdx) * 0.7;
+                // Roll de viragem (adernamento centrífugo)
+                const turnRoll = -state.rudder * speedMS * 0.012;
+                state.roll += ((waveRoll + turnRoll) - state.roll) * 0.05;
+
+                // Posição Y = base + heave das ondas
+                yachtBody.position.y = state.baseY + state.heave;
+
+                // Limitador de velocidade (22 kn = ~11.3 m/s)
+                const maxSpeedMS = 22 / 1.944;
+                if (speedMS > maxSpeedMS) {
+                    const mult = maxSpeedMS / speedMS;
+                    yachtBody.velocity.x *= mult;
+                    yachtBody.velocity.z *= mult;
+                }
+
+                world.step(dt);
+
+                // === SINCRONIZAR VISUAL COM FÍSICA ===
+                if (yacht) {
+                    yacht.position.copy(yachtBody.position);
+                    yacht.quaternion.copy(yachtBody.quaternion);
+
+                    // Aplicar pitch e roll visuais (não afeta física, só visual)
+                    const q = new THREE.Quaternion().setFromEuler(
+                        new THREE.Euler(state.pitch, 0, state.roll, 'YXZ')
+                    );
+                    yacht.quaternion.multiply(q);
+
+                    // Câmara dinâmica que responde às ondas
+                    const scaleMult = currentYachtSize.y || 1;
+                    const camHeight = Math.max(8, scaleMult * 1.2);
+                    const camDist = -Math.max(20, currentYachtSize.z * 1.2);
+                    const camTarget = yacht.position.clone().add(
+                        new THREE.Vector3(0, camHeight, camDist).applyQuaternion(yachtBody.quaternion)
+                    );
+                    camera.position.lerp(camTarget, 0.04);
+                    const lookH = yacht.position.y + (scaleMult * 0.5);
+                    camera.lookAt(yacht.position.x, lookH, yacht.position.z);
+                }
+
+                // === ANIMAR VÉRTICES DA ÁGUA PROCEDURAL ===
+                if (proceduralWaterMesh && proceduralWaterMesh.geometry) {
+                    const geo = proceduralWaterMesh.geometry;
+                    const pos = geo.attributes.position;
+                    if (pos) {
+                        for (let i = 0; i < pos.count; i++) {
+                            const x = pos.getX(i);
+                            const z = pos.getZ(i); // Note: pré-rotação, Z é o "up" do plano
+                            const wh = getWaveHeight(x * 0.05, z * 0.05, t);
+                            pos.setY(i, wh);
+                        }
+                        pos.needsUpdate = true;
+                        geo.computeVertexNormals();
+                    }
+                }
+            }
+
+            if (yachtHelper && state.isCalibrating) yachtHelper.update();
+            if (envHelper && state.isCalibrating) envHelper.update();
+
+            const delta = clock.getDelta();
+            mixers.forEach(m => m.update(delta));
+
+            updateHUD(yachtBody && !state.isCalibrating ? yachtBody.velocity.length() : 0);
+            renderer.render(scene, camera);
+        }
+
+        function updateHUD(speed) {
+            const kn = speed * 1.944;
+            const spdEl = document.getElementById('spdVal');
+            if (spdEl) spdEl.innerHTML = `${kn.toFixed(1)} <span>KN</span>`;
+
+            const pwrEl = document.getElementById('pwrVal');
+            if (pwrEl) pwrEl.innerHTML = `${Math.round(state.throttle * 100)} <span>%</span>`;
+
+            let hdg = 0;
+            if (yacht) {
+                hdg = Math.round((yacht.rotation.y * 180 / Math.PI) % 360);
+                if (hdg < 0) hdg += 360;
+            }
+            const hdgEl = document.getElementById('hdgVal');
+            if (hdgEl) hdgEl.innerHTML = `${hdg.toString().padStart(3, '0')} <span>°</span>`;
+
+            let dist = 100;
+            if (yacht && proceduralDockBody) {
+                const centerDist = yacht.position.distanceTo(state.targetPoint);
+                const safeZone = Math.max(proceduralDockBody.shapes[0].halfExtents.x, proceduralDockBody.shapes[0].halfExtents.z);
+                dist = Math.max(0, centerDist - safeZone);
+            }
+            const dstEl = document.getElementById('dstVal');
+            if (dstEl) dstEl.innerHTML = `${dist.toFixed(1)} <span>M</span>`;
+
+            state.accuracy = Math.max(0, 100 - (dist * 2.2));
+            const accEl = document.getElementById('accVal');
+            if (accEl) accEl.innerHTML = `${state.accuracy.toFixed(1)} <span>%</span>`;
+            const accBar = document.getElementById('accBar');
+            if (accBar) accBar.style.width = `${state.accuracy}%`;
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+
+</html>
